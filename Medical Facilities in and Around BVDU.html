@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Medical Facilities in and Around Bharti Vidyapeeth</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root {
+    --bg: #f5f4f0;
+    --surface: #ffffff;
+    --surface2: #f0efe9;
+    --border: #e2e0d8;
+    --text: #1c1b18;
+    --text2: #6b6960;
+    --text3: #9e9c94;
+    --accent: #2563a8;
+    --accent-light: #dbeafe;
+    --hosp: #e84d4d;
+    --hosp-light: #fde8e8;
+    --med: #2e9e60;
+    --med-light: #d8f5e8;
+    --clinic: #d97706;
+    --clinic-light: #fef3c7;
+    --diag: #7c3aed;
+    --diag-light: #ede9fe;
+    --campus: #2563a8;
+    --shadow: 0 1px 4px rgba(0,0,0,0.08), 0 2px 12px rgba(0,0,0,0.04);
+    --shadow-lg: 0 4px 20px rgba(0,0,0,0.10);
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* ── HEADER ── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 58px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    z-index: 100;
+  }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .header-logo {
+    width: 36px; height: 36px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-size: 18px;
+  }
+  .header-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 17px; color: var(--text);
+    line-height: 1.2;
+  }
+  .header-subtitle { font-size: 11.5px; color: var(--text2); margin-top: 1px; }
+  .header-badges { display: flex; gap: 8px; }
+  .badge {
+    font-size: 11px; font-weight: 500;
+    padding: 4px 10px; border-radius: 20px;
+    border: 1px solid var(--border);
+    background: var(--surface2); color: var(--text2);
+  }
+  .badge.primary { background: var(--accent-light); color: var(--accent); border-color: #bfdbfe; }
+
+  /* ── MAIN LAYOUT ── */
+  .main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* ── LEFT PANEL ── */
+  .left-panel {
+    width: 300px;
+    flex-shrink: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .panel-section {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .panel-label {
+    font-size: 10px; font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 10px;
+  }
+
+  /* Stats grid */
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+  }
+  .stat-num {
+    font-family: 'DM Serif Display', serif;
+    font-size: 24px; color: var(--text);
+    line-height: 1;
+  }
+  .stat-label { font-size: 11px; color: var(--text2); margin-top: 3px; }
+  .stat-card.full { grid-column: span 2; }
+
+  /* Type breakdown */
+  .type-list { display: flex; flex-direction: column; gap: 7px; }
+  .type-row { display: flex; align-items: center; gap: 8px; }
+  .type-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .type-name { font-size: 12.5px; color: var(--text); flex: 1; }
+  .type-count {
+    font-size: 12px; font-weight: 600; color: var(--text);
+    min-width: 22px; text-align: right;
+  }
+  .type-bar-wrap { flex: 1; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .type-bar { height: 100%; border-radius: 2px; }
+
+  /* Filter buttons */
+  .filter-buttons { display: flex; flex-wrap: wrap; gap: 6px; }
+  .filter-btn {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px; font-weight: 500;
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .filter-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .filter-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+  .filter-btn[data-type="Hospital"].active { background: var(--hosp); border-color: var(--hosp); }
+  .filter-btn[data-type="Medical Store"].active { background: var(--med); border-color: var(--med); }
+  .filter-btn[data-type="Clinic"].active { background: var(--clinic); border-color: var(--clinic); }
+  .filter-btn[data-type="Diagnostic Centre"].active { background: var(--diag); border-color: var(--diag); }
+
+  /* Buffer toggle */
+  .buffer-toggle { display: flex; gap: 6px; }
+  .buf-btn {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px; font-weight: 500;
+    padding: 5px 14px;
+    border-radius: 20px;
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.15s;
+    flex: 1; text-align: center;
+  }
+  .buf-btn.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+  /* Facility list */
+  .facility-list-wrap {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px;
+  }
+  .facility-list-wrap::-webkit-scrollbar { width: 4px; }
+  .facility-list-wrap::-webkit-scrollbar-track { background: transparent; }
+  .facility-list-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .fac-item {
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    border: 1.5px solid transparent;
+    transition: all 0.15s;
+    margin-bottom: 4px;
+  }
+  .fac-item:hover { background: var(--surface2); border-color: var(--border); }
+  .fac-item.active { background: var(--accent-light); border-color: #93c5fd; }
+  .fac-item-top { display: flex; align-items: flex-start; gap: 8px; }
+  .fac-type-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; flex-shrink: 0; }
+  .fac-name { font-size: 12.5px; font-weight: 500; color: var(--text); line-height: 1.3; flex: 1; }
+  .fac-meta { display: flex; align-items: center; gap: 10px; margin-top: 4px; padding-left: 16px; }
+  .fac-dist { font-size: 11px; color: var(--text2); }
+  .fac-rating {
+    font-size: 11px; font-weight: 500;
+    display: flex; align-items: center; gap: 3px;
+  }
+  .fac-type-tag {
+    font-size: 10px; font-weight: 500;
+    padding: 2px 7px; border-radius: 10px;
+    margin-top: 4px; margin-left: 16px;
+    display: inline-block;
+  }
+
+  /* ── MAP ── */
+  #map {
+    flex: 1;
+    z-index: 1;
+  }
+
+  /* ── RIGHT PANEL ── */
+  .right-panel {
+    width: 290px;
+    flex-shrink: 0;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  /* Distance donut */
+  .donut-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 0 4px;
+    gap: 16px;
+  }
+  .donut-svg { width: 100px; height: 100px; }
+
+  .donut-legend { display: flex; flex-direction: column; gap: 6px; }
+  .dl-item { display: flex; align-items: center; gap: 7px; }
+  .dl-dot { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+  .dl-label { font-size: 11.5px; color: var(--text2); }
+  .dl-val { font-size: 11.5px; font-weight: 600; color: var(--text); }
+
+
+  /* Info card */
+  .info-card {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+  }
+  .info-card::-webkit-scrollbar { width: 4px; }
+  .info-card::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .info-placeholder {
+    text-align: center;
+    padding: 32px 16px;
+    color: var(--text3);
+  }
+  .info-placeholder-icon { font-size: 36px; margin-bottom: 10px; opacity: 0.4; }
+  .info-placeholder-text { font-size: 13px; line-height: 1.5; }
+
+  .info-header {
+    display: flex; align-items: flex-start; gap: 10px;
+    margin-bottom: 14px;
+  }
+  .info-type-badge {
+    font-size: 11px; font-weight: 600;
+    padding: 4px 10px; border-radius: 20px;
+    flex-shrink: 0; margin-top: 2px;
+  }
+  .info-name {
+    font-family: 'DM Serif Display', serif;
+    font-size: 16px; line-height: 1.3; color: var(--text);
+  }
+  .info-rows { display: flex; flex-direction: column; gap: 10px; }
+  .info-row { display: flex; gap: 10px; align-items: flex-start; }
+  .info-row-icon { font-size: 14px; width: 20px; flex-shrink: 0; margin-top: 1px; }
+  .info-row-label { font-size: 10.5px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em; }
+  .info-row-val { font-size: 12.5px; color: var(--text); margin-top: 1px; }
+  .star-display {
+    display: flex; align-items: center; gap: 4px;
+  }
+  .stars { color: #f59e0b; font-size: 13px; }
+  .rating-num { font-size: 13px; font-weight: 600; }
+  .info-divider { border: none; border-top: 1px solid var(--border); margin: 12px 0; }
+
+
+
+  /* Leaflet popup overrides */
+  .leaflet-popup-content-wrapper {
+    border-radius: 10px !important;
+    box-shadow: var(--shadow-lg) !important;
+    border: 1px solid var(--border) !important;
+    font-family: 'DM Sans', sans-serif !important;
+  }
+  .leaflet-popup-content { margin: 12px 14px !important; }
+  .popup-name { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .popup-type { font-size: 11px; color: var(--text2); }
+  .popup-dist { font-size: 11px; color: var(--accent); font-weight: 500; margin-top: 4px; }
+
+  /* ─ Distance bar chart ─ */
+  .dist-bars { display: flex; flex-direction: column; gap: 7px; }
+  .dist-bar-row { display: flex; align-items: center; gap: 8px; }
+  .dist-bar-label { font-size: 11px; color: var(--text2); width: 68px; flex-shrink: 0; }
+  .dist-bar-outer { flex: 1; height: 10px; background: var(--border); border-radius: 5px; overflow: hidden; }
+  .dist-bar-inner { height: 100%; border-radius: 5px; transition: width 0.6s ease; }
+  .dist-bar-num { font-size: 11px; font-weight: 600; color: var(--text); width: 16px; text-align: right; }
+
+  /* Campus marker icon */
+  .campus-icon-div {
+    background: var(--accent);
+    border: 3px solid white;
+    border-radius: 50%;
+    width: 18px; height: 18px;
+    box-shadow: 0 2px 8px rgba(37,99,168,0.4);
+  }
+
+
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="header-left">
+    <div class="header-logo">🏥</div>
+    <div>
+      <div class="header-title">Medical Facilities in and Around Bharti Vidyapeeth</div>
+      <div class="header-subtitle">Dhankawadi, Pune · 1km Study Zone</div>
+    </div>
+  </div>
+  <div class="header-badges">
+    <span class="badge primary">40 Facilities</span>
+    <span class="badge">1km Buffer</span>
+    <span class="badge">OpenStreetMap</span>
+  </div>
+</header>
+
+<!-- MAIN -->
+<div class="main">
+
+  <!-- LEFT PANEL -->
+  <div class="left-panel">
+
+    <!-- Stats -->
+    <div class="panel-section">
+      <div class="panel-label">Overview</div>
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-num">40</div>
+          <div class="stat-label">Total Facilities</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num">16</div>
+          <div class="stat-label">Within 500m</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num">11</div>
+          <div class="stat-label">Hospitals</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-num">20</div>
+          <div class="stat-label">Med. Stores</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Type Breakdown -->
+    <div class="panel-section">
+      <div class="panel-label">By Facility Type</div>
+      <div class="type-list">
+        <div class="type-row">
+          <div class="type-dot" style="background:var(--hosp)"></div>
+          <div class="type-name">Hospital</div>
+          <div class="type-bar-wrap"><div class="type-bar" style="width:55%;background:var(--hosp)"></div></div>
+          <div class="type-count">11</div>
+        </div>
+        <div class="type-row">
+          <div class="type-dot" style="background:var(--med)"></div>
+          <div class="type-name">Medical Store</div>
+          <div class="type-bar-wrap"><div class="type-bar" style="width:100%;background:var(--med)"></div></div>
+          <div class="type-count">20</div>
+        </div>
+        <div class="type-row">
+          <div class="type-dot" style="background:var(--clinic)"></div>
+          <div class="type-name">Clinic</div>
+          <div class="type-bar-wrap"><div class="type-bar" style="width:35%;background:var(--clinic)"></div></div>
+          <div class="type-count">7</div>
+        </div>
+        <div class="type-row">
+          <div class="type-dot" style="background:var(--diag)"></div>
+          <div class="type-name">Diagnostic</div>
+          <div class="type-bar-wrap"><div class="type-bar" style="width:10%;background:var(--diag)"></div></div>
+          <div class="type-count">2</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Filter -->
+    <div class="panel-section">
+      <div class="panel-label">Filter by Type</div>
+      <div class="filter-buttons">
+        <button class="filter-btn active" data-type="All" onclick="filterFacilities(this)">All</button>
+        <button class="filter-btn" data-type="Hospital" onclick="filterFacilities(this)">🏥 Hospital</button>
+        <button class="filter-btn" data-type="Medical Store" onclick="filterFacilities(this)">💊 Med Store</button>
+        <button class="filter-btn" data-type="Clinic" onclick="filterFacilities(this)">🩺 Clinic</button>
+        <button class="filter-btn" data-type="Diagnostic Centre" onclick="filterFacilities(this)">🔬 Diagnostic</button>
+      </div>
+    </div>
+
+    <!-- Buffer Toggle -->
+    <div class="panel-section">
+      <div class="panel-label">Buffer Zone</div>
+      <div class="buffer-toggle">
+        <button class="buf-btn active" onclick="setBuffer(this, 'all')">All (1km)</button>
+        <button class="buf-btn" onclick="setBuffer(this, '500')">500m only</button>
+      </div>
+    </div>
+
+    <!-- Search + List -->
+    <div class="panel-section" style="border-bottom:none;padding-bottom:8px">
+      <div class="panel-label">Facilities</div>
+    </div>
+    <div class="facility-list-wrap" id="facilityList"></div>
+
+  </div>
+
+  <!-- MAP -->
+  <div id="map"></div>
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+
+    <!-- Donut / distance distribution -->
+    <div class="panel-section">
+      <div class="panel-label">Distance Distribution</div>
+      <div class="donut-wrap">
+        <svg class="donut-svg" viewBox="0 0 100 100">
+          <!-- 0-250m: 6/40 = 54° -->
+          <circle cx="50" cy="50" r="34" fill="none" stroke="#e2e0d8" stroke-width="14"/>
+          <!-- segments: total circumference = 213.6 -->
+          <!-- 0-250: 6 = 32.04 -->
+          <circle cx="50" cy="50" r="34" fill="none" stroke="#2e9e60" stroke-width="14"
+            stroke-dasharray="32.04 181.56" stroke-dashoffset="0" transform="rotate(-90 50 50)"/>
+          <!-- 250-500: 10 = 53.4 -->
+          <circle cx="50" cy="50" r="34" fill="none" stroke="#7cb9f5" stroke-width="14"
+            stroke-dasharray="53.4 160.2" stroke-dashoffset="-32.04" transform="rotate(-90 50 50)"/>
+          <!-- 500-750: 7 = 37.38 -->
+          <circle cx="50" cy="50" r="34" fill="none" stroke="#f59e0b" stroke-width="14"
+            stroke-dasharray="37.38 176.22" stroke-dashoffset="-85.44" transform="rotate(-90 50 50)"/>
+          <!-- 750-1000: 17 = 90.78 -->
+          <circle cx="50" cy="50" r="34" fill="none" stroke="#e84d4d" stroke-width="14"
+            stroke-dasharray="90.78 122.82" stroke-dashoffset="-122.82" transform="rotate(-90 50 50)"/>
+          <text x="50" y="47" text-anchor="middle" font-family="DM Serif Display" font-size="14" fill="#1c1b18">40</text>
+          <text x="50" y="58" text-anchor="middle" font-family="DM Sans" font-size="7" fill="#6b6960">facilities</text>
+        </svg>
+        <div class="donut-legend">
+          <div class="dl-item"><div class="dl-dot" style="background:#2e9e60"></div><div class="dl-label">0–250m</div><div class="dl-val">6</div></div>
+          <div class="dl-item"><div class="dl-dot" style="background:#7cb9f5"></div><div class="dl-label">250–500m</div><div class="dl-val">10</div></div>
+          <div class="dl-item"><div class="dl-dot" style="background:#f59e0b"></div><div class="dl-label">500–750m</div><div class="dl-val">7</div></div>
+          <div class="dl-item"><div class="dl-dot" style="background:#e84d4d"></div><div class="dl-label">750m–1km</div><div class="dl-val">17</div></div>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- 24hr availability -->
+    <div class="panel-section">
+      <div class="panel-label">24hr Availability</div>
+      <div class="dist-bars">
+        <div class="dist-bar-row">
+          <div class="dist-bar-label">Open 24hr</div>
+          <div class="dist-bar-outer"><div class="dist-bar-inner" style="width:65%;background:var(--med)"></div></div>
+          <div class="dist-bar-num">13</div>
+        </div>
+        <div class="dist-bar-row">
+          <div class="dist-bar-label">Timed</div>
+          <div class="dist-bar-outer"><div class="dist-bar-inner" style="width:40%;background:var(--clinic)"></div></div>
+          <div class="dist-bar-num">19</div>
+        </div>
+        <div class="dist-bar-row">
+          <div class="dist-bar-label">Unknown</div>
+          <div class="dist-bar-outer"><div class="dist-bar-inner" style="width:20%;background:var(--border)"></div></div>
+          <div class="dist-bar-num">8</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Facility Info Card -->
+    <div class="panel-section" style="border-bottom:none;padding-bottom:4px">
+      <div class="panel-label">Facility Details</div>
+    </div>
+    <div class="info-card" id="infoCard">
+      <div class="info-placeholder">
+        <div class="info-placeholder-icon">📍</div>
+        <div class="info-placeholder-text">Click a marker or facility<br>in the list to view details</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const CAMPUS = [18.4580, 73.8548];
+const BUFFER_500 = 500;
+const BUFFER_1000 = 1000;
+
+const FACILITIES = [{"id":1,"name":"Bharti Vidhyapeeth homeopathic medical collegeand hospital","type":"Hospital","subtype":"Hospital","rating":"N/A","hours":"N/A","hygiene":"Clean","distance":54.8,"source":"Field Survey (EpiCollect5)","lat":18.457517,"lon":73.854698,"link":"https://www.google.com/maps/search/?api=1&query=18.457517,73.854698"},{"id":2,"name":"Bharti vidhyapeeth ayurved pharmacy","type":"Medical Store","subtype":"Medical Store","rating":"N/A","hours":"N/A","hygiene":"Clean","distance":109.3,"source":"Field Survey (EpiCollect5)","lat":18.457419,"lon":73.853964,"link":"https://www.google.com/maps/search/?api=1&query=18.457419,73.853964"},{"id":3,"name":"Bharti Vidhyapeeth dental college and hospital","type":"Hospital","subtype":"Hospital","rating":"N/A","hours":"N/A","hygiene":"Clean","distance":120.3,"source":"Field Survey (EpiCollect5)","lat":18.457408,"lon":73.855755,"link":"https://www.google.com/maps/search/?api=1&query=18.457408,73.855755"},{"id":4,"name":"Bharti Vidhyapeeth Collegeof ayurved and hospital","type":"Hospital","subtype":"Hospital","rating":"N/A","hours":"N/A","hygiene":"Clean","distance":195.3,"source":"Field Survey (EpiCollect5)","lat":18.458728,"lon":73.856485,"link":"https://www.google.com/maps/search/?api=1&query=18.458728,73.856485"},{"id":5,"name":"Darshan Medical","type":"Medical Store","subtype":"Medical Store","rating":"N/A","hours":"N/A","hygiene":"Average","distance":230.9,"source":"Field Survey (EpiCollect5)","lat":18.457315,"lon":73.852733,"link":"https://www.google.com/maps/search/?api=1&query=18.457315,73.852733"},{"id":6,"name":"Homeopathic Hospital","type":"Hospital","subtype":"Hospital","rating":"N/A","hours":"N/A","hygiene":"Clean","distance":233.9,"source":"Field Survey (EpiCollect5)","lat":18.458674,"lon":73.856901,"link":"https://www.google.com/maps/search/?api=1&query=18.458674,73.856901"},{"id":7,"name":"Metro medical","type":"Medical Store","subtype":"Medical Store","rating":"N/A","hours":"N/A","hygiene":"Clean","distance":284.5,"source":"Field Survey (EpiCollect5)","lat":18.457211,"lon":73.852234,"link":"https://www.google.com/maps/search/?api=1&query=18.457211,73.852234"},{"id":8,"name":"Bharati Hospital & Research Centre","type":"Hospital","subtype":"Multi-Specialty Hospital","rating":4.2,"hours":"Open 24 hours","hygiene":"Clean","distance":298,"source":"Google Maps","lat":18.459349,"lon":73.857241,"link":"https://www.google.com/maps/search/?api=1&query=18.459349,73.857241"},{"id":9,"name":"Bharati Hospital - Emergency Medicine Dept","type":"Hospital","subtype":"Emergency","rating":3.8,"hours":"Open 24 hours","hygiene":"Clean","distance":316.2,"source":"Google Maps","lat":18.4595466,"lon":73.8573159,"link":"https://www.google.com/maps/search/?api=1&query=18.4595466,73.8573159"},{"id":10,"name":"Bharati Medical And General Stores","type":"Medical Store","subtype":"Pharmacy","rating":2.7,"hours":"Open 24 hours","hygiene":"Clean","distance":316.7,"source":"Google Maps","lat":18.4593634,"lon":73.8574367,"link":"https://www.google.com/maps/search/?api=1&query=18.4593634,73.8574367"},{"id":11,"name":"Shree Ganesh Medico","type":"Medical Store","subtype":"Pharmacy","rating":4.6,"hours":"8:00 AM \u2013 11:30 PM","hygiene":"Clean","distance":352.6,"source":"Google Maps","lat":18.460127,"lon":73.8572789,"link":"https://www.google.com/maps/search/?api=1&query=18.460127,73.8572789"},{"id":12,"name":"Vakratund Medical Stores","type":"Medical Store","subtype":"Pharmacy","rating":5,"hours":"8:00 AM \u2013 11:30 PM","hygiene":"Clean","distance":402.1,"source":"Google Maps","lat":18.4546943,"lon":73.8532556,"link":"https://www.google.com/maps/search/?api=1&query=18.4546943,73.8532556"},{"id":13,"name":"Sanjeevani Medico","type":"Medical Store","subtype":"Pharmacy","rating":5,"hours":"Available on Google Maps","hygiene":"Clean","distance":405.4,"source":"Google Maps","lat":18.4592431,"lon":73.858413,"link":"https://www.google.com/maps/search/?api=1&query=18.4592431,73.858413"},{"id":14,"name":"Bhakti Shakti Medical","type":"Medical Store","subtype":"Pharmacy","rating":5,"hours":"Available on Google Maps","hygiene":"Clean","distance":462.3,"source":"Google Maps","lat":18.4605208,"lon":73.8582856,"link":"https://www.google.com/maps/search/?api=1&query=18.4605208,73.8582856"},{"id":15,"name":"Shree Sheva Medicals","type":"Medical Store","subtype":"Medical Store","rating":"N/A","hours":"N/A","hygiene":"Clean","distance":464.2,"source":"Field Survey (EpiCollect5)","lat":18.456599,"lon":73.850654,"link":"https://www.google.com/maps/search/?api=1&query=18.456599,73.850654"},{"id":16,"name":"Healthico Diagnostic Centre","type":"Diagnostic Centre","subtype":"Pathology / X-Ray","rating":4.9,"hours":"Open 24 hours","hygiene":"Clean","distance":497.9,"source":"Google Maps","lat":18.455735,"lon":73.8507274,"link":"https://www.google.com/maps/search/?api=1&query=18.455735,73.8507274"},{"id":17,"name":"Shree Sainath Hospital","type":"Hospital","subtype":"Multi-Specialty Clinic","rating":4.9,"hours":"Available on Google Maps","hygiene":"Clean","distance":507.1,"source":"Google Maps","lat":18.456973,"lon":73.850116,"link":"https://www.google.com/maps/search/?api=1&query=18.456973,73.850116"},{"id":18,"name":"Orchid Polyclinic Advanced Aesthetic & Diagnostics","type":"Clinic","subtype":"Polyclinic / Diagnostic","rating":5,"hours":"Open 24 hours","hygiene":"Clean","distance":511.5,"source":"Google Maps","lat":18.456921,"lon":73.8500859,"link":"https://www.google.com/maps/search/?api=1&query=18.456921,73.8500859"},{"id":19,"name":"Shiv Ganesh Medical","type":"Medical Store","subtype":"Pharmacy","rating":4.2,"hours":"8:00 AM \u2013 12:00 AM","hygiene":"Clean","distance":516,"source":"Google Maps","lat":18.4612377,"lon":73.8583052,"link":"https://www.google.com/maps/search/?api=1&query=18.4612377,73.8583052"},{"id":20,"name":"Zeno Health Pharmacy \u2013 Katraj","type":"Medical Store","subtype":"Pharmacy Chain","rating":5,"hours":"8:00 AM \u2013 11:00 PM","hygiene":"Clean","distance":680.7,"source":"Google Maps","lat":18.4529001,"lon":73.8512303,"link":"https://www.google.com/maps/search/?api=1&query=18.4529001,73.8512303"},{"id":21,"name":"New Chaitanya Medical Stores","type":"Medical Store","subtype":"Pharmacy","rating":5,"hours":"Available on Google Maps","hygiene":"Clean","distance":696.8,"source":"Google Maps","lat":18.4519915,"lon":73.8566761,"link":"https://www.google.com/maps/search/?api=1&query=18.4519915,73.8566761"},{"id":22,"name":"Dr. Gavali's Clinic","type":"Clinic","subtype":"Physician / Diabetologist","rating":4.8,"hours":"Mon\u2013Fri 9AM\u20131PM, 6\u20139PM","hygiene":"Clean","distance":719.8,"source":"Google Maps","lat":18.4515927,"lon":73.8538303,"link":"https://www.google.com/maps/search/?api=1&query=18.4515927,73.8538303"},{"id":23,"name":"Health Plus Pharmacy","type":"Medical Store","subtype":"Pharmacy","rating":1,"hours":"Reportedly closed at night","hygiene":"Clean","distance":737.9,"source":"Google Maps","lat":18.4639004,"lon":73.8580025,"link":"https://www.google.com/maps/search/?api=1&query=18.4639004,73.8580025"},{"id":24,"name":"Metro Chemist","type":"Medical Store","subtype":"Pharmacy","rating":4.6,"hours":"9:00 AM \u2013 10:30 PM","hygiene":"Clean","distance":763.2,"source":"Google Maps","lat":18.4513974,"lon":73.8567772,"link":"https://www.google.com/maps/search/?api=1&query=18.4513974,73.8567772"},{"id":25,"name":"Shubhakaran Davakhana","type":"Clinic","subtype":"De-Addiction Centre","rating":4.5,"hours":"9:00 AM \u2013 6:00 PM (Sun Closed)","hygiene":"Clean","distance":774.3,"source":"Google Maps","lat":18.4642257,"lon":73.858089,"link":"https://www.google.com/maps/search/?api=1&query=18.4642257,73.858089"},{"id":26,"name":"MedPlus Tiranga Chowk Bharati Vidyapeeth","type":"Medical Store","subtype":"Pharmacy Chain","rating":4.9,"hours":"7:00 AM \u2013 11:00 PM","hygiene":"Clean","distance":777.5,"source":"Google Maps","lat":18.4518171,"lon":73.8513571,"link":"https://www.google.com/maps/search/?api=1&query=18.4518171,73.8513571"},{"id":27,"name":"N.P. Medical And General Stores","type":"Medical Store","subtype":"Pharmacy","rating":5,"hours":"9:30 AM \u2013 8:00 PM (Sun Closed)","hygiene":"Clean","distance":783,"source":"Google Maps","lat":18.464398,"lon":73.8579,"link":"https://www.google.com/maps/search/?api=1&query=18.464398,73.8579"},{"id":28,"name":"ARSN Health Care Clinic","type":"Clinic","subtype":"ENT / Physiotherapy","rating":4.9,"hours":"9:00 AM \u2013 10:00 PM","hygiene":"Clean","distance":815.2,"source":"Google Maps","lat":18.4572708,"lon":73.8471095,"link":"https://www.google.com/maps/search/?api=1&query=18.4572708,73.8471095"},{"id":29,"name":"Royal Hospital","type":"Hospital","subtype":"Multi-Specialty Hospital","rating":4.3,"hours":"Open 24 hours","hygiene":"Clean","distance":816.1,"source":"Google Maps","lat":18.4511608,"lon":73.8576069,"link":"https://www.google.com/maps/search/?api=1&query=18.4511608,73.8576069"},{"id":30,"name":"Late Vilasrao Tambe Dispensary","type":"Clinic","subtype":"Govt. Municipal Dispensary","rating":3.6,"hours":"Mon\u2013Fri 9AM\u20135PM, Sat 9AM\u20131PM","hygiene":"Clean","distance":826.1,"source":"Google Maps","lat":18.4654231,"lon":73.8544739,"link":"https://www.google.com/maps/search/?api=1&query=18.4654231,73.8544739"},{"id":31,"name":"Siddhi Hospital","type":"Hospital","subtype":"Multi-Specialty Hospital","rating":4.6,"hours":"Open 24 hours","hygiene":"Clean","distance":826.5,"source":"Google Maps","lat":18.4641339,"lon":73.8592262,"link":"https://www.google.com/maps/search/?api=1&query=18.4641339,73.8592262"},{"id":32,"name":"Modi Clinic","type":"Clinic","subtype":"Pulmonology / ENT","rating":4,"hours":"9:00 AM \u2013 9:00 PM","hygiene":"Clean","distance":844.2,"source":"Google Maps","lat":18.465549,"lon":73.8556516,"link":"https://www.google.com/maps/search/?api=1&query=18.465549,73.8556516"},{"id":33,"name":"MedPlus Balaji Nagar Dhankawadi","type":"Medical Store","subtype":"Pharmacy Chain","rating":4.9,"hours":"8:00 AM \u2013 11:00 PM","hygiene":"Clean","distance":922.3,"source":"Google Maps","lat":18.4656587,"lon":73.8581575,"link":"https://www.google.com/maps/search/?api=1&query=18.4656587,73.8581575"},{"id":34,"name":"Shree Clinic","type":"Clinic","subtype":"General Physician","rating":4.5,"hours":"Available on Google Maps","hygiene":"Clean","distance":929,"source":"Google Maps","lat":18.4660418,"lon":73.8524105,"link":"https://www.google.com/maps/search/?api=1&query=18.4660418,73.8524105"},{"id":35,"name":"Dhankawade Hospital","type":"Hospital","subtype":"Government / General Hospital","rating":2.9,"hours":"Mon\u2013Fri 24hr; Sat\u2013Sun Closed","hygiene":"Clean","distance":933.8,"source":"Google Maps","lat":18.4624273,"lon":73.8623235,"link":"https://www.google.com/maps/search/?api=1&query=18.4624273,73.8623235"},{"id":36,"name":"Zeno Health (Generico) - Pratibha Nagar","type":"Medical Store","subtype":"Pharmacy Chain","rating":5,"hours":"8:00 AM \u2013 11:00 PM","hygiene":"Clean","distance":940.5,"source":"Google Maps","lat":18.4662709,"lon":73.8529334,"link":"https://www.google.com/maps/search/?api=1&query=18.4662709,73.8529334"},{"id":37,"name":"Anant Medical","type":"Medical Store","subtype":"Pharmacy","rating":5,"hours":"Available on Google Maps","hygiene":"Clean","distance":978.3,"source":"Google Maps","lat":18.4495819,"lon":73.8574955,"link":"https://www.google.com/maps/search/?api=1&query=18.4495819,73.8574955"},{"id":38,"name":"SM Path Lab","type":"Diagnostic Centre","subtype":"Pathology Lab","rating":5,"hours":"Open 24 hours","hygiene":"Clean","distance":980.6,"source":"Google Maps","lat":18.4661572,"lon":73.8583335,"link":"https://www.google.com/maps/search/?api=1&query=18.4661572,73.8583335"},{"id":39,"name":"Pune Municipal Corporation Hospital","type":"Hospital","subtype":"Government Hospital","rating":3.7,"hours":"Reported permanently closed","hygiene":"Clean","distance":983,"source":"Google Maps","lat":18.4653052,"lon":73.849551,"link":"https://www.google.com/maps/search/?api=1&query=18.4653052,73.849551"},{"id":40,"name":"Shree Medical And General Stores","type":"Medical Store","subtype":"Pharmacy","rating":5,"hours":"Available on Google Maps","hygiene":"Clean","distance":989.1,"source":"Google Maps","lat":18.464298,"lon":73.861422,"link":"https://www.google.com/maps/search/?api=1&query=18.464298,73.861422"}];
+
+const TYPE_COLORS = {
+  'Hospital': '#e84d4d',
+  'Medical Store': '#2e9e60',
+  'Clinic': '#d97706',
+  'Diagnostic Centre': '#7c3aed'
+};
+const TYPE_LIGHTS = {
+  'Hospital': '#fde8e8',
+  'Medical Store': '#d8f5e8',
+  'Clinic': '#fef3c7',
+  'Diagnostic Centre': '#ede9fe'
+};
+
+let map, markers = [], circles = [], activeFilter = 'All', activeBuffer = 'all', selectedId = null;
+
+function typeColor(t) { return TYPE_COLORS[t] || '#6b6960'; }
+function typeLight(t) { return TYPE_LIGHTS[t] || '#f0efe9'; }
+
+function createMarkerIcon(facility, size = 14) {
+  const col = typeColor(facility.type);
+  const inBuffer = facility.distance <= 500;
+  return L.divIcon({
+    className: '',
+    html: `<div style="
+      width:${size}px;height:${size}px;
+      background:${col};
+      border:2.5px solid white;
+      border-radius:50%;
+      box-shadow:0 1px 6px rgba(0,0,0,0.25);
+      cursor:pointer;
+      ${inBuffer ? 'ring:2px solid '+col+';' : 'opacity:0.75;'}
+    "></div>`,
+    iconSize: [size, size],
+    iconAnchor: [size/2, size/2]
+  });
+}
+
+function initMap() {
+  map = L.map('map', { zoomControl: false }).setView(CAMPUS, 15);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a> contributors',
+    maxZoom: 19
+  }).addTo(map);
+
+  L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+  // Campus marker
+  const campusIcon = L.divIcon({
+    className: '',
+    html: `<div style="
+      width:22px;height:22px;
+      background:#2563a8;
+      border:3px solid white;
+      border-radius:50%;
+      box-shadow:0 2px 12px rgba(37,99,168,0.5);
+      display:flex;align-items:center;justify-content:center;
+      color:white;font-size:11px;font-weight:bold;
+    ">★</div>`,
+    iconSize: [22, 22],
+    iconAnchor: [11, 11]
+  });
+  L.marker(CAMPUS, { icon: campusIcon, zIndexOffset: 1000 })
+    .addTo(map)
+    .bindPopup(`<div class="popup-name">Bharati Vidyapeeth Campus</div><div class="popup-type">📍 Campus Centre</div>`);
+
+  // Buffer circles
+  const c500 = L.circle(CAMPUS, {
+    radius: 500,
+    color: '#2563a8', weight: 2, opacity: 0.7,
+    fillColor: '#2563a8', fillOpacity: 0.05,
+    dashArray: '6 4'
+  }).addTo(map);
+  const c1000 = L.circle(CAMPUS, {
+    radius: 1000,
+    color: '#6b6960', weight: 1.5, opacity: 0.45,
+    fillColor: '#6b6960', fillOpacity: 0.03,
+    dashArray: '4 6'
+  }).addTo(map);
+  circles = [c500, c1000];
+
+  // Add circle labels
+  L.marker([18.4535, 73.8548], {
+    icon: L.divIcon({
+      className: '',
+      html: '<div style="font-size:10px;color:#2563a8;font-weight:600;font-family:DM Sans;background:white;padding:2px 5px;border-radius:4px;border:1px solid #bfdbfe;white-space:nowrap;">500m buffer</div>',
+      iconAnchor: [30, 8]
+    })
+  }).addTo(map);
+
+  L.marker([18.4485, 73.8548], {
+    icon: L.divIcon({
+      className: '',
+      html: '<div style="font-size:10px;color:#6b6960;font-weight:500;font-family:DM Sans;background:white;padding:2px 5px;border-radius:4px;border:1px solid #e2e0d8;white-space:nowrap;">1km buffer</div>',
+      iconAnchor: [28, 8]
+    })
+  }).addTo(map);
+
+  // Add facility markers
+  FACILITIES.forEach(f => {
+    const marker = L.marker([f.lat, f.lon], { icon: createMarkerIcon(f) })
+      .addTo(map)
+      .bindPopup(`
+        <div class="popup-name">${f.name}</div>
+        <div class="popup-type">${f.subtype}</div>
+        <div class="popup-dist">📍 ${f.distance}m from campus</div>
+      `);
+    marker.on('click', () => selectFacility(f.id));
+    markers.push({ marker, facility: f });
+  });
+
+  renderList(FACILITIES);
+}
+
+function getTypeEmoji(t) {
+  if (t === 'Hospital') return '🏥';
+  if (t === 'Medical Store') return '💊';
+  if (t === 'Clinic') return '🩺';
+  if (t === 'Diagnostic Centre') return '🔬';
+  return '📍';
+}
+
+function renderList(facilities) {
+  const el = document.getElementById('facilityList');
+  if (!facilities.length) {
+    el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3);font-size:12px;">No facilities match your filter.</div>';
+    return;
+  }
+  el.innerHTML = facilities.map(f => `
+    <div class="fac-item ${selectedId === f.id ? 'active' : ''}" id="fac-${f.id}" onclick="selectFacility(${f.id})">
+      <div class="fac-item-top">
+        <div class="fac-type-dot" style="background:${typeColor(f.type)}"></div>
+        <div class="fac-name">${f.name}</div>
+      </div>
+      <div class="fac-meta">
+        <span class="fac-dist">📍 ${f.distance}m</span>
+        ${f.rating !== 'N/A' ? `<span class="fac-rating"><span style="color:#f59e0b">★</span> ${f.rating}</span>` : ''}
+      </div>
+      <span class="fac-type-tag" style="background:${typeLight(f.type)};color:${typeColor(f.type)}">${getTypeEmoji(f.type)} ${f.type}</span>
+    </div>
+  `).join('');
+}
+
+function selectFacility(id) {
+  selectedId = id;
+  const f = FACILITIES.find(x => x.id === id);
+  if (!f) return;
+
+  // Update list highlight
+  document.querySelectorAll('.fac-item').forEach(el => el.classList.remove('active'));
+  const listEl = document.getElementById(`fac-${id}`);
+  if (listEl) { listEl.classList.add('active'); listEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+
+  // Pan map
+  map.setView([f.lat, f.lon], 16, { animate: true });
+  const mObj = markers.find(m => m.facility.id === id);
+  if (mObj) { mObj.marker.openPopup(); }
+
+  // Info card
+  const col = typeColor(f.type);
+  const light = typeLight(f.type);
+  const ratingHtml = f.rating !== 'N/A' 
+    ? `<div class="star-display"><span class="stars">${'★'.repeat(Math.round(f.rating))}${'☆'.repeat(5-Math.round(f.rating))}</span><span class="rating-num">${f.rating}</span></div>`
+    : '<span style="color:var(--text3);font-size:12px">Not available (field survey data)</span>';
+
+  document.getElementById('infoCard').innerHTML = `
+    <div class="info-header">
+      <span class="info-type-badge" style="background:${light};color:${col}">${getTypeEmoji(f.type)} ${f.type}</span>
+    </div>
+    <div class="info-name">${f.name}</div>
+    <hr class="info-divider">
+    <div class="info-rows">
+      <div class="info-row">
+        <div class="info-row-icon">📏</div>
+        <div>
+          <div class="info-row-label">Distance from Campus</div>
+          <div class="info-row-val" style="color:${col};font-weight:600">${f.distance} metres</div>
+        </div>
+      </div>
+      <div class="info-row">
+        <div class="info-row-icon">🏷️</div>
+        <div>
+          <div class="info-row-label">Sub-Type</div>
+          <div class="info-row-val">${f.subtype}</div>
+        </div>
+      </div>
+      <div class="info-row">
+        <div class="info-row-icon">⭐</div>
+        <div>
+          <div class="info-row-label">Google Rating</div>
+          <div class="info-row-val">${ratingHtml}</div>
+        </div>
+      </div>
+      <div class="info-row">
+        <div class="info-row-icon">🕐</div>
+        <div>
+          <div class="info-row-label">Operating Hours</div>
+          <div class="info-row-val">${f.hours === 'N/A' ? 'Not recorded' : f.hours}</div>
+        </div>
+      </div>
+      <div class="info-row">
+        <div class="info-row-icon">🧹</div>
+        <div>
+          <div class="info-row-label">Hygiene (Survey)</div>
+          <div class="info-row-val">${f.hygiene}</div>
+        </div>
+      </div>
+      <div class="info-row">
+        <div class="info-row-icon">🌐</div>
+        <div>
+          <div class="info-row-label">Buffer Zone</div>
+          <div class="info-row-val">${f.distance <= 500 ? '<span style="color:var(--med);font-weight:600">✓ Within 500m</span>' : '<span style="color:var(--clinic);font-weight:500">500m–1km zone</span>'}</div>
+        </div>
+      </div>
+    </div>
+
+  `;
+}
+
+function filterFacilities(btn) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  activeFilter = btn.dataset.type;
+  applyFilters();
+}
+
+function setBuffer(btn, val) {
+  document.querySelectorAll('.buf-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  activeBuffer = val;
+  applyFilters();
+}
+
+function applyFilters() {
+  let filtered = FACILITIES.filter(f => {
+    const typeMatch = activeFilter === 'All' || f.type === activeFilter;
+    const bufferMatch = activeBuffer === 'all' || (activeBuffer === '500' && f.distance <= 500);
+    return typeMatch && bufferMatch;
+  });
+
+  const visibleIds = new Set(filtered.map(f => f.id));
+
+  markers.forEach(({ marker, facility }) => {
+    if (visibleIds.has(facility.id)) {
+      marker.setOpacity(1);
+      marker.getElement() && (marker.getElement().style.display = '');
+    } else {
+      marker.setOpacity(0.1);
+    }
+  });
+
+  renderList(filtered);
+}
+
+window.addEventListener('load', initMap);
+</script>
+</body>
+</html>
